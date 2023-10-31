@@ -10,20 +10,126 @@ class BaseLine(nn.Module):
 
     def build_result(self, x):
         return { "pred":x }
-    
-
-class Neck(nn.Module):
-    
+class Block(nn.Module):
     def __init__(self):
         pass
-    # PVT结构 REs结果
     def forward(self, x):
-        # 输出融合后的数量
-        # 融合后出来两个分支，强相关长一些，反之
-        # 8个列的预测 短的也是
-        # 把结果送到head来分类
-    
         pass
+
+class CBLK(nn.Module):
+    def __init__(self, inc, ouc, k = 3, s = 1, p = 1):
+        super().__init__()
+        self.conv = nn.Sequential(
+            nn.Conv2d(inc, ouc, k, s, p),
+            nn.BatchNorm2d(ouc),
+            nn.LeakyReLU(inplace=True),
+        )
+        
+    def forward(self, x):
+        x = self.conv(x)
+        return x
+# sppf  atn
+class Fusion(nn.Module):
+    def __init__(self, inc, ouc):
+        super().__init__()
+        
+        d = ouc//4
+        print("inc {}".format(inc))
+        self.c1 = nn.Sequential(
+            CBLK(inc[0], d),
+            nn.MaxPool2d(2),
+        )
+        self.c2 = nn.Sequential(
+            CBLK(inc[1], d)
+        )
+        self.c3 = nn.Sequential(
+            CBLK(inc[2], d)
+        )
+        self.c4 = nn.Sequential(
+            CBLK(inc[3], d)
+        )
+        self.proj_k = nn.Conv2d(4*d, 4*d, 1,1 )
+        self.out = nn.Conv2d(4*d, ouc, 1,1 )
+        self.softmax = nn.Softmax()
+        self.drop = nn.Dropout(0.3)
+        self.down = nn.MaxPool2d(2)
+        
+    def forward(self, x1, x2, x3, x4):
+        c1 = self.c1(x1)
+        c2 = self.c2(x2)
+        c3 = self.c3(x3)
+        c4 = self.c4(x4)
+        
+        c21 = torch.cat([c1,c2], 1)
+        print("c3 {} self.down(c21) {} ".format(c3.size(),self.down(c21).size()))
+        
+        print("c1 {} c2 {} c3 {} c4 {} ".format(c1.size(),c2.size(),c3.size(),c4.size() ))
+#      c3 torch.Size([2, 36, 14, 14]) self.down(c21) torch.Size([2, 72, 14, 14]) 
+# c1 torch.Size([2, 36, 28, 28]) c2 torch.Size([2, 36, 28, 28]) c3 torch.Size([2, 36, 14, 14]) c4 torch.Size([2, 36, 7, 7])    
+
+        c321 = torch.cat([self.down(c21), c3],dim=1)
+        
+        v = torch.cat([self.down(c321), c4],dim=1)
+        k = self.proj_k(v)
+        q = self.softmax(torch.sum((self.down(self.down(c1 + c2) + c3) + c4), dim=1, keepdim=True))
+        
+        x = v @ self.drop(k)
+        feature = x @ q
+        out = self.out(feature)
+        return out
+import numpy as np
+class Neck(nn.Module): 
+    def __init__(self, pvt_decode, resnet_decode, num_conv_layers = [ 8, 6]):
+        super(Neck, self).__init__()
+        self.pvt_decode = pvt_decode
+        self.resnet_decode = resnet_decode
+        middle_channel = 144
+        last_channel = 32
+        print("inc {}".format(np.array(pvt_decode) + np.array(resnet_decode)))
+        self.focus = Fusion( np.array(pvt_decode) + np.array(resnet_decode), middle_channel)
+      
+        d = [ CBLK(middle_channel, middle_channel,1,1,0) for i in range(num_conv_layers[0]) ]
+        d.append(CBLK(middle_channel, last_channel ,1,1,0))
+        self.conv_layers1 = nn.Sequential(*d)
+        
+        d = [ CBLK(middle_channel, middle_channel,1,1,0) for i in range(num_conv_layers[1]) ]
+        d.append(CBLK(middle_channel, last_channel ,1,1,0))
+        self.conv_layers2 = nn.Sequential(*d)
+        self.conv = nn.ModuleList()
+        self.flatten = nn.Flatten()
+        self.linear=nn.ModuleList()
+        
+        for i in range(14):
+            self.linear.append(
+                nn.Sequential(
+                    nn.Linear(last_channel*7*7, 1024),#middle_channel*7*7, 1024),
+                    nn.Linear(1024, 768),
+                    nn.Linear(768, 512)
+                )
+            )
+           
+    
+    def forward(self, x, y):
+        fuse1 = torch.cat([x[0] , y[0]], 1)
+        fuse2 = torch.cat([x[1] , y[1]], 1)
+        fuse3 = torch.cat([x[2] , y[2]], 1)
+        fuse4 = torch.cat([x[3] , y[3]], 1)
+        # print("fuse1 {} fuse2 {} fuse3 {} fuse4 {} ".format(fuse1.size(),fuse2.size(),fuse3.size(),fuse4.size()))
+        combine_feature = self.focus( fuse1,fuse2,fuse3,fuse4 )
+        # print("combine feature:", combine_feature.shape)
+        out1 = self.conv_layers1(combine_feature)
+        out2 = self.conv_layers2(combine_feature)
+        high = self.flatten(out1)
+        low = self.flatten(out2)
+        # print(high.shape, low.shape)
+        ans = []
+        for idx in range(14):
+            if idx < 8:
+                ans.append(self.linear[idx](high))
+            else:
+                ans.append(self.linear[idx](low))
+            
+        return ans
 
 class Head(nn.Module):
     # 类别数量
@@ -41,8 +147,8 @@ class Head(nn.Module):
     CNV = 2               #  11
     Vascular_abnormality = 15 # 12
     Pattern = 14              # 13
-    # [0,1,6,7,9,10,11,13] 相关性较强
-    # [2,3,4,5,8,12] 弱相关
+    # [0,1,6,7,9,10,11,13]
+    # [2,3,4,5,8,12]
     def __init__(self, middle_channel):
         self.Impression_classifier = nn.Sequential(nn.Linear(middle_channel[0], self.Impression))
         self.HyperF_Type_classifier = nn.Sequential(nn.Linear(middle_channel[1], self.HyperF_Type))
@@ -58,6 +164,7 @@ class Head(nn.Module):
         self.CNV_classifier = nn.Sequential(nn.Linear(middle_channel[11], self.CNV))
         self.Vascular_abnormality_classifier = nn.Sequential(nn.Linear(middle_channel[12], self.Vascular_abnormality))
         self.Pattern_classifier = nn.Sequential(nn.Linear(middle_channel[13], self.Pattern))
+        
     def forward(self, x):
         Impression_res = self.Impression_classifier(x[0])
         HyperF_Type_res = self.HyperF_Type_classifier(x[1])
@@ -102,9 +209,8 @@ class DUAL(BaseLine):
     # [0,1,6,7,9,10,11,13]
     
     # [2,3,4,5,8,12]
-    def __init__(self) -> None:
+    def __init__(self, neck_num = [8,6]) -> None:
         super().__init__()
-        
         
         # PVT 提取特征
         path = './pretrained_pth/pvt_v2_b2.pth' # 找我要
@@ -123,7 +229,9 @@ class DUAL(BaseLine):
         n_p = sum(x.numel() for x in self.resnet.parameters()) # number parameters
         n_g = sum(x.numel() for x in self.resnet.parameters() if x.requires_grad)  # number gradients
         print(f"ResNet Summary: {len(list(self.resnet.modules()))} layers, {n_p} parameters, {n_p/1e6} M, {n_g} gradients")
-        self.head = Head(middle_channel=[])
+#         self.neck = Neck( pvt_feature = [64, 128, 320, 512], resnet_feature = [64, 128, 256, 512], num_conv_layers = neck_num)
+        self.neck = Neck( [64, 128, 320, 512],  [64, 128, 256, 512], num_conv_layers = neck_num)
+        self.head = Head(middle_channel=[512, 512, 512, 512, 512, 512, 512, 512, 512, 512, 512, 512, 512, 512])
 
     def pvt_backbone(self, x):
         pvt_x = x.clone().detach()
@@ -136,6 +244,8 @@ class DUAL(BaseLine):
         return pvt
 
     def resnet_backbone(self, x):
+        # if x.shape[1] == 1:
+        #     x = torch.cat([x,x,x], 1)
         x   = self.resnet.conv1(x)
         x   = self.resnet.bn1(x)
         x   = self.resnet.relu(x)
@@ -153,5 +263,6 @@ class DUAL(BaseLine):
     def forward(self, x):
         pvt_decode = self.pvt_backbone(x)     
         res_decode = self.resnet_backbone(x)
-        
-        return None
+        feature_neck = self.neck( pvt_decode, res_decode)
+        classifier = self.head(feature_neck)
+        return classifier
