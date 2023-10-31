@@ -253,4 +253,5 @@ if __name__ == '__main__':
     # 查询
     name_id = 0 # 0- 13
     class_name = a.data_key[name_id]
+    #获取name_id下的这一列的特征
     print(f"class name: {class_name}, info: {a.gt_index2name_dict[name_id][np.argmax(gt[name_id]).item()]}")

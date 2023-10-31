@@ -13,9 +13,16 @@ class BaseLine(nn.Module):
     
 
 class Neck(nn.Module):
+    
     def __init__(self):
         pass
+    # PVT结构 REs结果
     def forward(self, x):
+        # 输出融合后的数量
+        # 融合后出来两个分支，强相关长一些，反之
+        # 8个列的预测 短的也是
+        # 把结果送到head来分类
+    
         pass
 
 class Head(nn.Module):
@@ -34,8 +41,8 @@ class Head(nn.Module):
     CNV = 2               #  11
     Vascular_abnormality = 15 # 12
     Pattern = 14              # 13
-    # [0,1,6,7,9,10,11,13]
-    # [2,3,4,5,8,12]
+    # [0,1,6,7,9,10,11,13] 相关性较强
+    # [2,3,4,5,8,12] 弱相关
     def __init__(self, middle_channel):
         self.Impression_classifier = nn.Sequential(nn.Linear(middle_channel[0], self.Impression))
         self.HyperF_Type_classifier = nn.Sequential(nn.Linear(middle_channel[1], self.HyperF_Type))
