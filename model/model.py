@@ -102,7 +102,7 @@ class Neck(nn.Module):
         for i in range(14):
             self.linear.append(
                 nn.Sequential(
-                    nn.Linear(last_channel*7*7, 1024),#middle_channel*7*7, 1024),
+                    nn.Linear(last_channel*12*12, 1024),#middle_channel*7*7, 1024),
                     nn.Linear(1024, 768),
                     nn.Linear(768, 512)
                 )
