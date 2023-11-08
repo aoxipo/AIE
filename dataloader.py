@@ -2,6 +2,7 @@ import os
 import cv2
 import numpy as np
 from torch.utils.data import Dataset
+import torch
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -155,6 +156,7 @@ class DataLoad(Dataset):
             if os.path.exists(file_path):
                 file_name_list = os.listdir(file_path)
                 for file_name in file_name_list:
+                    
                     img_obj = {
                         "image" : file_path  + file_name,
                         "gt" : gt_index,
@@ -216,14 +218,16 @@ class DataLoad(Dataset):
             image_src_path, image_gt = self.photo_set_one_hot[re_index]['image'], self.photo_set_one_hot[re_index]['gt_oh']
             if "direct" in self.photo_set_one_hot[re_index]:
                 direct = self.photo_set_one_hot[re_index]['direct']
+            # print( image_src_path, os.path.exists(image_src_path) )
             img = self.read_image(image_src_path)
-            
+            # print( image_src_path, img.shape, direct)
             if direct:
                 img = img[:384,384:]
             else:
                 img = img[:384,:384]
             
             img = self.datagan(img)
+            # print("data gan:", img.shape)
             image_gt = [ torch.from_numpy(gt) for gt in image_gt ]
             # image_gt = self.datagan_gt(image_gt)
 
