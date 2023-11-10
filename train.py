@@ -16,7 +16,7 @@ from utils.adploss import diceCoeffv2
 from utils.score import cal_all_score
 from utils.score  import mean_iou_np, mean_dice_np, positive_recall, negative_recall
 from utils.show import display_progress
-
+from utils.logger import Logger
 use_gpu = torch.cuda.is_available()
 torch.cuda.manual_seed(3407)
 if (use_gpu):
@@ -31,7 +31,9 @@ if (use_gpu):
 else:
     device = torch.device("cpu")
 print("use gpu:", use_gpu)
-
+DATA_KEY = [ "Impression", "HyperF_Type", "HyperF_Area(DA)", "HyperF_Fovea", "HyperF_ExtraFovea", "HyperF_Y", 
+      "HypoF_Type" ,"HypoF_Area(DA)","HypoF_Fovea", "HypoF_ExtraFovea"
+    ,"HypoF_Y","CNV","Vascular abnormality (DR)","Pattern"]
 
 class Train():
     def __init__(self, in_channles, image_size = 320, name = 'dense', method_type = 0, 
@@ -68,10 +70,12 @@ class Train():
             raise NotImplementedError
         
         self.cost = torch.nn.MSELoss()
+        self.cross_coss = torch.nn.CrossEntropyLoss()
         self.downsample = torch.nn.MaxPool2d(2)
         if (use_gpu):
             self.model = self.model.to(device)
             self.cost = self.cost.to(device)
+            self.cross_coss = self.cross_coss.to(device)
             self.downsample = self.downsample.to(device)
             
         if (is_show):
@@ -83,7 +87,8 @@ class Train():
     def train_and_test(self, n_epochs, data_loader_train, data_loader_test):
         best_loss = 1000000
         es = 0
-        
+        epoch_train_loss = 0
+        epoch_test_loss = 0
         self.save_parameter()
         for epoch in range(n_epochs):
             sc = False
@@ -94,6 +99,7 @@ class Train():
             epoch_train_loss = self.train(data_loader_train)
             if epoch % 10 == 0:
                 sc = True
+
             epoch_test_loss = self.test(data_loader_test, sc)
 
             self.history_acc.append(0)
@@ -108,12 +114,12 @@ class Train():
                     (n_epochs - 1 - epoch) * (datetime.datetime.now() - start_time).seconds / 60,
                 )
             )
-            if epoch % 10 == 0:
-                for image, mask in data_loader_test:
-                    mask = mask[0].to(device)
-                    output = self.predict_batch(image)
-                    break
-                display_progress(image[0], mask[0][0].unsqueeze(0), output['mask'][0], edge = output['edge'][0], current_epoch = epoch, save = True, save_path = "./save/" + self.name + "/")
+            # if epoch % 10 == 0:
+            #     for image, mask in data_loader_test:
+            #         mask = mask[0].to(device)
+            #         output = self.predict_batch(image)
+            #         break
+            #     display_progress(image[0], mask[0][0].unsqueeze(0), output['mask'][0], edge = output['edge'][0], current_epoch = epoch, save = True, save_path = "./save/" + self.name + "/")
             if (epoch <= 4):
                 continue
 
@@ -129,51 +135,48 @@ class Train():
                             "...")
                     break
         self.save_history()
-        self.save_parameter()
+        self.save_parameter("./save/", "best")
 
     def test(self, data_loader_test, need_score = False):
         self.model.eval()
         running_loss = 0
         test_index = 0
-        iou = []
-        dice = []
-        pr = []
-        nr = []
+        acc = []
         with torch.no_grad():
             for data in data_loader_test:
-                X_test, y_test = data
 
-                y_gt = y_test
-                X_test, y_gt = Variable(X_test).float()
+                X_test, y_test = data
+                X_test, y_gt = Variable(X_test).float(), y_test
                 if (use_gpu):
                     X_test = X_test.to(device)
-                    y_gt = y_gt.to(device)
+                    for i in range(len(y_gt)):
+                        y_gt[i] = y_gt[i].to(device)
                 
                 outputs = self.model(X_test)
-                # TODO 
-                loss1 = self.cost(outputs["mask"], y_gt)
-                loss_dice_1 = diceCoeffv2( outputs["mask"], y_gt )
-                
-                loss = 0.4 * loss_dice_1 + 0.3 * loss1
+
+                loss = self.cost(outputs[0], y_gt[0].float())
+                loss_cross = self.cross_coss(  outputs[0], torch.argmax(y_gt[0], 1).long()  )
+                for i in range(1,14):
+                    loss += self.cost(outputs[i], y_gt[i].float())
+                    loss_cross += self.cross_coss(  outputs[i], torch.argmax(y_gt[i], 1).long()  )
+                    
                 running_loss += loss.data.item()
                 test_index += 1
                 if need_score:
-                    gt = y_gt.cpu().numpy()
-                    mask = outputs["mask"].detach().cpu().numpy()
-                    gt = np.asarray(gt, np.float32)
-                    gt /= (gt.max() + 1e-8)
-
-                    mask = np.asarray(mask, np.float32)
-                    mask /= (mask.max() + 1e-8)
-                    iou.append(mean_iou_np(gt, mask))
-                    dice.append(mean_dice_np(gt, mask))
-                    pr.append(positive_recall(gt, mask))
-                    nr.append(negative_recall(gt, mask))
-        # TODO 
+                    
+                    acc_1 = torch.sum(torch.argmax(outputs[0], 1) == torch.argmax(y_gt[0], 1))/len(y_gt[0])
+                    acc_list = [acc_1]
+                    for i in range(1,14):
+                        acc_list.append( torch.sum(torch.argmax(outputs[i], 1) == torch.argmax(y_gt[i], 1))/len(y_gt[i]))
+                    acc.append( acc_list )
+        
+      
         if need_score:
-            log_str = "IOU:{:.4f}, DICE:{:.4f}, PR:{:.4f},NR:{:.4f}".format(
-                np.mean( iou ), np.mean( dice ), np.mean( pr ),np.mean( nr ),  
+            log_str = "Total ACC:{:.4f}, ".format(
+                np.mean( acc )
             )
+            for i in range(len(DATA_KEY)):
+                log_str += f"{DATA_KEY[i]} ACC:{  np.array(acc)[:,i].mean():.4f}, "
             self.history_score.append(log_str)
             print( log_str )
 
@@ -202,16 +205,16 @@ class Train():
             # print("训练中 train {}".format(X_train.shape))
             self.optimizer.zero_grad()
             
-            outputs = self.model(X_train)
-            # TODO    Impression_res, HyperF_Type_res, HyperF_Area_res, HyperF_Fovea_res, HyperF_ExtraFovea_res, 
-            # HyperF_Y_res, HypoF_Type_res, HypoF_Area_res, HypoF_Fovea_res, 
-            # HypoF_ExtraFovea_res, HypoF_Y_res, CNV_res, Vascular_abnormality_res, 
-            # Pattern_res 
+            outputs = self.model(X_train) # n  B, C
+           
             loss = self.cost(outputs[0], y_gt[0].float())
+            print(outputs[0].shape,  y_gt[0].shape, torch.argmax(y_gt[0], 1).long(), torch.argmax(y_gt[0], 1).long().shape)
+            loss_cross = self.cross_coss(  outputs[0], torch.argmax(y_gt[0], 1).long()  )
             for i in range(1,14):
                 loss += self.cost(outputs[i], y_gt[i].float())
+                loss_cross += self.cross_coss(  outputs[i], torch.argmax(y_gt[i], 1 ).long()  )
             
-        
+            loss = loss + loss_cross
             loss.backward()
             self.optimizer.step()
 
@@ -235,7 +238,7 @@ class Train():
             output = self.model(image)
         return output
 
-    def save_history(self, file_path='F:/AIE-main/save/'):
+    def save_history(self, file_path='./save/'):
         file_path = file_path + self.name + "/"
         if not os.path.exists(file_path):
             os.mkdir(file_path)
@@ -255,7 +258,7 @@ class Train():
         fo.write(str(self.history_score))
         fo.close()
 
-    def save_parameter(self, file_path='F:/AIE-main/save/', name=None):
+    def save_parameter(self, file_path='./save/', name=None):
         file_path = file_path + self.name + "/"
         if not os.path.exists(file_path):
             os.makedirs(file_path)
@@ -273,10 +276,12 @@ class Train():
 
 device = "cuda:0"
 if __name__ == "__main__":
+    logger = Logger(
 
+    )
     batch_size = 12
     image_size = 384 #224
-    root_path = r"f:\dataset\Train" 
+    root_path = r"D:\dataset\eye\Train" 
     All_dataloader = DataLoad(
         root_path, 
         image_shape =  (image_size, image_size), #(240, 480), # (320, 640), #(256,256), #(320, 640),

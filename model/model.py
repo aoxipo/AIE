@@ -61,9 +61,9 @@ class Fusion(nn.Module):
         c4 = self.c4(x4)
         
         c21 = torch.cat([c1,c2], 1)
-        print("c3 {} self.down(c21) {} ".format(c3.size(),self.down(c21).size()))
+        # print("c3 {} self.down(c21) {} ".format(c3.size(),self.down(c21).size()))
         
-        print("c1 {} c2 {} c3 {} c4 {} ".format(c1.size(),c2.size(),c3.size(),c4.size() ))
+        # print("c1 {} c2 {} c3 {} c4 {} ".format(c1.size(),c2.size(),c3.size(),c4.size() ))
 #      c3 torch.Size([2, 36, 14, 14]) self.down(c21) torch.Size([2, 72, 14, 14]) 
 # c1 torch.Size([2, 36, 28, 28]) c2 torch.Size([2, 36, 28, 28]) c3 torch.Size([2, 36, 14, 14]) c4 torch.Size([2, 36, 7, 7])    
 
@@ -77,6 +77,7 @@ class Fusion(nn.Module):
         feature = x @ q
         out = self.out(feature)
         return out
+    
 import numpy as np
 class Neck(nn.Module): 
     def __init__(self, pvt_decode, resnet_decode, num_conv_layers = [ 8, 6]):
@@ -102,7 +103,7 @@ class Neck(nn.Module):
         for i in range(14):
             self.linear.append(
                 nn.Sequential(
-                    nn.Linear(last_channel*12*12, 1024),#middle_channel*7*7, 1024),
+                    nn.Linear( last_channel*7*7, 1024),# last_channel*7*7 middle_channel*7*7, 1024),
                     nn.Linear(1024, 768),
                     nn.Linear(768, 512)
                 )
@@ -124,6 +125,7 @@ class Neck(nn.Module):
         # print(high.shape, low.shape)
         ans = []
         for idx in range(14):
+            # print(high.shape, low.shape)
             if idx < 8:
                 ans.append(self.linear[idx](high))
             else:
@@ -150,7 +152,7 @@ class Head(nn.Module):
     # [0,1,6,7,9,10,11,13]
     # [2,3,4,5,8,12]
     def __init__(self, middle_channel):
-        super(Head, self).__init__()
+        super().__init__()
         self.Impression_classifier = nn.Sequential(nn.Linear(middle_channel[0], self.Impression))
         self.HyperF_Type_classifier = nn.Sequential(nn.Linear(middle_channel[1], self.HyperF_Type))
         self.HyperF_Area_classifier = nn.Sequential(nn.Linear(middle_channel[2], self.HyperF_Area))
@@ -214,16 +216,16 @@ class DUAL(BaseLine):
         super().__init__()
         
         # PVT 提取特征
-        path = './model/pretrained_pth/pvt_v2_b2.pth' # 找我要
+        path = './pretrained_pth/pvt_v2_b2.pth' # 找我要
         self.backbone = pvt_v2_b2()  # [64, 128, 320, 512]
-        save_model = torch.load(path)
-        model_dict = self.backbone.state_dict()
-        state_dict = {k: v for k, v in save_model.items() if k in model_dict.keys()}
-        model_dict.update(state_dict)
-        self.backbone.load_state_dict(model_dict)
-        n_p = sum(x.numel() for x in self.backbone.parameters()) # number parameters
-        n_g = sum(x.numel() for x in self.backbone.parameters() if x.requires_grad)  # number gradients
-        print(f"pvt Summary: {len(list(self.backbone.modules()))} layers, {n_p} parameters, {n_p/1e6} M, {n_g} gradients")
+        #  save_model = torch.load(path)
+        #         model_dict = self.backbone.state_dict()
+        #         state_dict = {k: v for k, v in save_model.items() if k in model_dict.keys()}
+        #         model_dict.update(state_dict)
+        #         self.backbone.load_state_dict(model_dict)
+        #         n_p = sum(x.numel() for x in self.backbone.parameters()) # number parameters
+        #         n_g = sum(x.numel() for x in self.backbone.parameters() if x.requires_grad)  # number gradients
+        #         print(f"pvt Summary: {len(list(self.backbone.modules()))} layers, {n_p} parameters, {n_p/1e6} M, {n_g} gradients")
         # RESNET 特征提取
         self.resnet = resnet(pretrained=True) 
         # self.resnet.load_state_dict(torch.load('pretrained_pth/resnet34-43635321.pth')) # 找我要
