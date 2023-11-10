@@ -103,7 +103,7 @@ class Neck(nn.Module):
         for i in range(14):
             self.linear.append(
                 nn.Sequential(
-                    nn.Linear( last_channel*7*7, 1024),# last_channel*7*7 middle_channel*7*7, 1024),
+                    nn.Linear( 2048, 1024),# last_channel*7*7 middle_channel*7*7, 1024),
                     nn.Linear(1024, 768),
                     nn.Linear(768, 512)
                 )
@@ -216,16 +216,16 @@ class DUAL(BaseLine):
         super().__init__()
         
         # PVT 提取特征
-        path = './pretrained_pth/pvt_v2_b2.pth' # 找我要
+        path = './model/pretrained_pth/pvt_v2_b2.pth' # 找我要
         self.backbone = pvt_v2_b2()  # [64, 128, 320, 512]
-        #  save_model = torch.load(path)
-        #         model_dict = self.backbone.state_dict()
-        #         state_dict = {k: v for k, v in save_model.items() if k in model_dict.keys()}
-        #         model_dict.update(state_dict)
-        #         self.backbone.load_state_dict(model_dict)
-        #         n_p = sum(x.numel() for x in self.backbone.parameters()) # number parameters
-        #         n_g = sum(x.numel() for x in self.backbone.parameters() if x.requires_grad)  # number gradients
-        #         print(f"pvt Summary: {len(list(self.backbone.modules()))} layers, {n_p} parameters, {n_p/1e6} M, {n_g} gradients")
+        save_model = torch.load(path)
+        model_dict = self.backbone.state_dict()
+        state_dict = {k: v for k, v in save_model.items() if k in model_dict.keys()}
+        model_dict.update(state_dict)
+        self.backbone.load_state_dict(model_dict)
+        n_p = sum(x.numel() for x in self.backbone.parameters()) # number parameters
+        n_g = sum(x.numel() for x in self.backbone.parameters() if x.requires_grad)  # number gradients
+        print(f"pvt Summary: {len(list(self.backbone.modules()))} layers, {n_p} parameters, {n_p/1e6} M, {n_g} gradients")
         # RESNET 特征提取
         self.resnet = resnet(pretrained=True) 
         # self.resnet.load_state_dict(torch.load('pretrained_pth/resnet34-43635321.pth')) # 找我要
@@ -235,7 +235,8 @@ class DUAL(BaseLine):
 #         self.neck = Neck( pvt_feature = [64, 128, 320, 512], resnet_feature = [64, 128, 256, 512], num_conv_layers = neck_num)
         self.neck = Neck( [64, 128, 320, 512],  [64, 128, 256, 512], num_conv_layers = neck_num)
         self.head = Head(middle_channel=[ 512 for i in range(14) ])
-
+    
+    @torch.no_grad()
     def pvt_backbone(self, x):
         pvt_x = x.clone().detach()
         if x.shape[1] == 1:
@@ -245,7 +246,8 @@ class DUAL(BaseLine):
         # pvt_decode: x1:torch.Size([2, 64, 56, 56]), c2:torch.Size([2, 128, 28, 28]), c3:torch.Size([2, 320, 14, 14]), c4:torch.Size([2, 512, 7, 7])
         
         return pvt
-
+    
+    @torch.no_grad()
     def resnet_backbone(self, x):
         # if x.shape[1] == 1:
         #     x = torch.cat([x,x,x], 1)

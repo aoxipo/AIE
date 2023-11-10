@@ -142,6 +142,10 @@ class Train():
         running_loss = 0
         test_index = 0
         acc = []
+        acc_dict = []
+        for i in DATA_KEY:
+            acc_dict[i] = []
+
         with torch.no_grad():
             for data in data_loader_test:
 
@@ -165,18 +169,23 @@ class Train():
                 if need_score:
                     
                     acc_1 = torch.sum(torch.argmax(outputs[0], 1) == torch.argmax(y_gt[0], 1))/len(y_gt[0])
+                    acc_dict[DATA_KEY[0]].append( acc_1 )
                     acc_list = [acc_1]
                     for i in range(1,14):
                         acc_list.append( torch.sum(torch.argmax(outputs[i], 1) == torch.argmax(y_gt[i], 1))/len(y_gt[i]))
+                        acc_dict[DATA_KEY[i]].append( torch.sum(torch.argmax(outputs[i], 1) == torch.argmax(y_gt[i], 1))/len(y_gt[i]) )
                     acc.append( acc_list )
-        
-      
+
+
         if need_score:
+            total_acc = []
+            for key, value in acc_dict.items():
+                total_acc.append( np.mean( value ) )
             log_str = "Total ACC:{:.4f}, ".format(
-                np.mean( acc )
+                np.mean( total_acc )
             )
             for i in range(len(DATA_KEY)):
-                log_str += f"{DATA_KEY[i]} ACC:{  np.array(acc)[:,i].mean():.4f}, "
+                log_str += f"{DATA_KEY[i]} ACC:{  np.array(acc_dict[DATA_KEY[i]]).mean():.4f}, "
             self.history_score.append(log_str)
             print( log_str )
 
@@ -208,7 +217,7 @@ class Train():
             outputs = self.model(X_train) # n  B, C
            
             loss = self.cost(outputs[0], y_gt[0].float())
-            print(outputs[0].shape,  y_gt[0].shape, torch.argmax(y_gt[0], 1).long(), torch.argmax(y_gt[0], 1).long().shape)
+            # print(outputs[0].shape,  y_gt[0].shape, torch.argmax(y_gt[0], 1).long(), torch.argmax(y_gt[0], 1).long().shape)
             loss_cross = self.cross_coss(  outputs[0], torch.argmax(y_gt[0], 1).long()  )
             for i in range(1,14):
                 loss += self.cost(outputs[i], y_gt[i].float())
@@ -277,10 +286,12 @@ class Train():
 device = "cuda:0"
 if __name__ == "__main__":
     logger = Logger(
-
+        file_name = "log.txt",
+        file_mode= "w+",#"a+",
+        should_flush=True
     )
     batch_size = 12
-    image_size = 384 #224
+    image_size = 256 #224 # 7
     root_path = r"D:\dataset\eye\Train" 
     All_dataloader = DataLoad(
         root_path, 

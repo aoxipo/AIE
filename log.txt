@@ -1,0 +1,90 @@
+D:\project\AIE\dataloader.py:154: FutureWarning: Series.__getitem__ treating keys as positions is deprecated. In a future version, integer keys will always be treated as labels (consistent with DataFrame behavior). To access a value by position, use `ser.iloc[pos]`
+  file_folder = row[-1]
+D:\dataset\eye\Train/Train/454_L/ not exists!
+D:\dataset\eye\Train/Train/454_R/ not exists!
+D:\dataset\eye\Train/Train/611_L/ not exists!
+D:\dataset\eye\Train/Train/611_R/ not exists!
+D:\dataset\eye\Train/Train/729_L/ not exists!
+D:\dataset\eye\Train/Train/1412_L/ not exists!
+D:\dataset\eye\Train/Train/1412_R/ not exists!
+D:\dataset\eye\Train/Train/1417_L/ not exists!
+D:\dataset\eye\Train/Train/1417_R/ not exists!
+D:\dataset\eye\Train/Train/1425_L/ not exists!
+D:\dataset\eye\Train/Train/1425_R/ not exists!
+D:\dataset\eye\Train/Train/1426_L/ not exists!
+D:\dataset\eye\Train/Train/1426_R/ not exists!
+D:\dataset\eye\Train/Train/1427_L/ not exists!
+D:\dataset\eye\Train/Train/1427_R/ not exists!
+D:\dataset\eye\Train/Train/1429_L/ not exists!
+D:\dataset\eye\Train/Train/1429_R/ not exists!
+D:\dataset\eye\Train/Train/1430_L/ not exists!
+D:\dataset\eye\Train/Train/1430_R/ not exists!
+D:\dataset\eye\Train/Train/1431_L/ not exists!
+D:\dataset\eye\Train/Train/1431_R/ not exists!
+D:\dataset\eye\Train/Train/1432_R/ not exists!
+D:\dataset\eye\Train/Train/1434_L/ not exists!
+D:\dataset\eye\Train/Train/1434_R/ not exists!
+D:\dataset\eye\Train/Train/1435_L/ not exists!
+D:\dataset\eye\Train/Train/1435_R/ not exists!
+D:\dataset\eye\Train/Train/1436_L/ not exists!
+D:\dataset\eye\Train/Train/1436_R/ not exists!
+D:\dataset\eye\Train/Train/1439_L/ not exists!
+D:\dataset\eye\Train/Train/1439_R/ not exists!
+D:\dataset\eye\Train/Train/1441_L/ not exists!
+D:\dataset\eye\Train/Train/1441_R/ not exists!
+D:\dataset\eye\Train/Train/1442_L/ not exists!
+D:\dataset\eye\Train/Train/1442_R/ not exists!
+D:\dataset\eye\Train/Train/1443_L/ not exists!
+D:\dataset\eye\Train/Train/1443_R/ not exists!
+D:\dataset\eye\Train/Train/1444_R/ not exists!
+D:\dataset\eye\Train/Train/1445_L/ not exists!
+D:\dataset\eye\Train/Train/1447_L/ not exists!
+D:\dataset\eye\Train/Train/1447_R/ not exists!
+D:\dataset\eye\Train/Train/1452_L/ not exists!
+D:\dataset\eye\Train/Train/1452_R/ not exists!
+D:\dataset\eye\Train/Train/1563_L/ not exists!
+total load data: 30768
+size : 24614
+train size: 24614 test size: 6154 , 
+pvt Summary: 319 layers, 24849856 parameters, 24.849856 M, 24849856 gradients
+C:\Users\DentaLink\.conda\envs\tooth\lib\site-packages\torchvision\models\_utils.py:208: UserWarning: The parameter 'pretrained' is deprecated since 0.13 and may be removed in the future, please use 'weights' instead.
+  warnings.warn(
+C:\Users\DentaLink\.conda\envs\tooth\lib\site-packages\torchvision\models\_utils.py:223: UserWarning: Arguments other than a weight enum or `None` for 'weights' are deprecated since 0.13 and may be removed in the future. The current behavior is equivalent to passing `weights=ResNet34_Weights.IMAGENET1K_V1`. You can also use `weights=ResNet34_Weights.DEFAULT` to get the most up-to-date weights.
+  warnings.warn(msg)
+ResNet Summary: 116 layers, 21797672 parameters, 21.797672 M, 21797672 gradients
+inc [ 128  256  576 1024]
+inc [ 128  256  576 1024]
+build DUAL model
+using  cuda:0
+Epoch 0/100
+----------
+X_train :torch.Size([1, 3, 256, 256])
+Y: [torch.Size([1, 23]), torch.Size([1, 5]), torch.Size([1, 3]), torch.Size([1, 2]), torch.Size([1, 18]), torch.Size([1, 4]), torch.Size([1, 3]), torch.Size([1, 3]), torch.Size([1, 2]), torch.Size([1, 17]), torch.Size([1, 5]), torch.Size([1, 2]), torch.Size([1, 15]), torch.Size([1, 14])]
+C:\Users\DentaLink\.conda\envs\tooth\lib\site-packages\torch\nn\modules\module.py:1518: UserWarning: Implicit dimension choice for softmax has been deprecated. Change the call to include dim=X as an argument.
+  return self._call_impl(*args, **kwargs)
+X_train :torch.Size([1, 3, 256, 256])
+Y: [torch.Size([1, 23]), torch.Size([1, 5]), torch.Size([1, 3]), torch.Size([1, 2]), torch.Size([1, 18]), torch.Size([1, 4]), torch.Size([1, 3]), torch.Size([1, 3]), torch.Size([1, 2]), torch.Size([1, 17]), torch.Size([1, 5]), torch.Size([1, 2]), torch.Size([1, 15]), torch.Size([1, 14])]
+X_train :torch.Size([1, 3, 256, 256])
+Y: [torch.Size([1, 23]), torch.Size([1, 5]), torch.Size([1, 3]), torch.Size([1, 2]), torch.Size([1, 18]), torch.Size([1, 4]), torch.Size([1, 3]), torch.Size([1, 3]), torch.Size([1, 2]), torch.Size([1, 17]), torch.Size([1, 5]), torch.Size([1, 2]), torch.Size([1, 15]), torch.Size([1, 14])]
+Traceback (most recent call last):
+  File "D:\project\AIE\train.py", line 336, in <module>
+    trainer.train_and_test(100, train_loader, validate_loader)
+  File "D:\project\AIE\train.py", line 99, in train_and_test
+    epoch_train_loss = self.train(data_loader_train)
+  File "D:\project\AIE\train.py", line 200, in train
+    for data in data_loader_train:
+  File "C:\Users\DentaLink\.conda\envs\tooth\lib\site-packages\torch\utils\data\dataloader.py", line 630, in __next__
+    data = self._next_data()
+  File "C:\Users\DentaLink\.conda\envs\tooth\lib\site-packages\torch\utils\data\dataloader.py", line 674, in _next_data
+    data = self._dataset_fetcher.fetch(index)  # may raise StopIteration
+  File "C:\Users\DentaLink\.conda\envs\tooth\lib\site-packages\torch\utils\data\_utils\fetch.py", line 49, in fetch
+    data = self.dataset.__getitems__(possibly_batched_index)
+  File "C:\Users\DentaLink\.conda\envs\tooth\lib\site-packages\torch\utils\data\dataset.py", line 364, in __getitems__
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "C:\Users\DentaLink\.conda\envs\tooth\lib\site-packages\torch\utils\data\dataset.py", line 364, in <listcomp>
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "D:\project\AIE\dataloader.py", line 222, in __getitem__
+    img = self.read_image(image_src_path)
+  File "D:\project\AIE\dataloader.py", line 173, in read_image
+    return cv2.imread(path, mode)
+KeyboardInterrupt
