@@ -226,9 +226,10 @@ class DataLoad(Dataset):
         print("total load data:", self.total_number)
     
     def read_image(self, path, mode = 1): # 默认为彩色图
-        img = cv2.imread(path, mode)
-        equalize_img = cv2.equalizeHist(img)
-        return equalize_img
+        img = cv2.imread(path, 0)
+        img = cv2.equalizeHist(img)
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+        return img
     
     def set_gan(self, method_list = None):
         
