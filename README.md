@@ -31,3 +31,59 @@ print(f"class name: {class_name}, info: {a.gt_index2name_dict[name_id][np.argmax
 
 
 
+# train
+
+```python
+logger = Logger(
+        file_name = "log.txt",
+        file_mode= "w+",#"a+",
+        should_flush=True
+    )
+
+batch_size = 256
+image_size = 256 #224 # 7
+root_path = # r"C:\Users\csz\Desktop\cs\Train"
+All_dataloader = DataLoad(
+    root_path, 
+    image_shape =  (image_size, image_size), #(240, 480), # (320, 640), #(256,256), #(320, 640),
+    data_aug = 1,
+    )
+
+train_size = int(len(All_dataloader) * 0.8)
+print("size :", train_size)
+
+train_dataset, validate_dataset = torch.utils.data.random_split(All_dataloader
+                                                                , [train_size, len(All_dataloader) - train_size])
+print("train size: {} test size: {} , ".format(len(train_dataset), len( validate_dataset )))
+train_loader = DataLoader(
+    dataset = train_dataset,
+    batch_size = batch_size,
+    shuffle = True,
+    drop_last = True,
+)
+validate_loader = DataLoader(
+    dataset = validate_dataset,
+    batch_size = batch_size,
+    shuffle = True,
+    drop_last = True,
+)
+method_dict = {
+    0: "Unet",
+    1: "DUAL",
+}
+
+
+trainer = Train( 
+    1, image_size,
+    name = "aie",
+    method_type = 1,
+    batch_size = batch_size,
+    device_ = "cuda:0",
+    is_show = False,
+)
+print("using ",device)
+# trainer.load_parameter( "./save_best/GTU_pvt/best.pkl" )
+
+trainer.train_and_test(100, train_loader, validate_loader)
+```
+
