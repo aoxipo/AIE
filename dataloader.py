@@ -1,5 +1,6 @@
 import os
 import cv2
+import random
 import numpy as np
 from torch.utils.data import Dataset
 import torch
@@ -69,15 +70,16 @@ def encode_row(discribe_key_word, discribe_key_index, discribe_word, data_key):
     return gt_dict, gt_index2name_dict, discribe_word
 
 class DataLoad(Dataset):
-    def __init__(self, root_path = r"D:\dataset\eye\Train" , image_shape = (384,384), data_aug = 1) -> None:
+    def __init__(self, root_path = r"C:\Users\csz\Desktop\cs\Train" , image_shape = (384,384), data_aug = 1) -> None:
         self.root_path = root_path
         csv_path = root_path + "/Train.csv"
         self.image_shape = image_shape
         self.data_source = pd.read_csv(csv_path)
-        data_key = [ "Impression", "HyperF_Type", "HyperF_Area(DA)", "HyperF_Fovea", "HyperF_ExtraFovea", "HyperF_Y", 
+        print("")
+        data_key = [ "Impression", "HyperF_Type", "HyperF_Area(DA)", "HyperF_Fovea", "HyperF_ExtraFovea", "HyperF_Y",
           "HypoF_Type" ,"HypoF_Area(DA)","HypoF_Fovea", "HypoF_ExtraFovea"
         ,"HypoF_Y","CNV","Vascular abnormality (DR)","Pattern"]
-        
+        self.data_key=data_key
         discribe_word, discribe_key_word, discribe_key_index = anylaized(self.data_source)
         gt_dict, gt_index2name_dict, discribe_word = encode_row(discribe_key_word, discribe_key_index, discribe_word, data_key)
         self.gt_dict = gt_dict
@@ -138,19 +140,72 @@ class DataLoad(Dataset):
                 'gt_oh':gt_data_key,
                 'direct':0,
             })
-            
+        self.total_number = len(self.photo_set_one_hot)
+
+    # TODO
+    # def sample_freq_table(self, data_source):
+    #     data_dict = {}  #
+    #     max_repetition = 5
+    #     for index, row in data_source.iterrows():
+    #         key = ""
+    #         for name in row[:-2]:
+    #             key += str(name)
+    #             print(key)
+    #         if key not in data_dict:
+    #             data_dict[key] = [index]
+    #         else:
+    #             data_dict[key].append(index)
+    #
+    #     random_list = []
+    #     for key, value in data_dict.items():
+    #         rep = len(value)
+    #         if rep > max_repetition:
+    #             random_list += random.sample(value, max_repetition)
+    #         else:
+    #             random_list += value
+
     def load_data(self, data_source):
         photo_set = []
+
         img_root_path = self.root_path + "/Train/"
+
+        #
+        data_dict = {}
+        max_repetition = 50
         for index, row in data_source.iterrows():
+            key = ""
+            for name in row[:-2]:
+                key += str(name)
+                # print(key)
+            if key not in data_dict:
+                data_dict[key] = [index]
+            else:
+                data_dict[key].append(index)
+        #
+
+        for index, row in data_source.iterrows():
+
             gt_index = []
+
+            hashkey = ""
             for discribe_list in row[:-2]:
                 discribe_list = self.check_word(discribe_list)
+                hashkey += str(discribe_list)
+
                 for discribe in discribe_list:
                     temp_gt_idx = []
                     code = self.discribe_word[discribe].idx
                     temp_gt_idx.append( code )
+
                 gt_index.append(temp_gt_idx)
+            #
+            if hashkey not in data_dict:
+                data_dict[hashkey] = [index]
+            else:
+                data_dict[hashkey].append(index)
+                if len(data_dict[hashkey]) > max_repetition:
+                    continue
+            #
             file_folder = row[-1]
             file_path = img_root_path + file_folder + "/"
             if os.path.exists(file_path):
@@ -164,7 +219,8 @@ class DataLoad(Dataset):
                     photo_set.append(img_obj)
             else:
                 print(file_path, "not exists!"  )
-                
+##
+##
         self.photo_set = photo_set
         self.total_number = len(self.photo_set)
         print("total load data:", self.total_number)
@@ -204,7 +260,7 @@ class DataLoad(Dataset):
         self.datagan_val = transforms.Compose(method_list)
     
     def __len__(self):
-        return len(self.photo_set)
+        return len(self.photo_set_one_hot)
 
     def __getitem__(self, index):
         """
@@ -241,11 +297,12 @@ class DataLoad(Dataset):
 
 
 if __name__ == '__main__':
-    root_path = r"D:\dataset\eye\Train" 
+    root_path = r"C:\Users\csz\Desktop\cs\Train"
     image_shape = (384,384)
 
     a = DataLoad(root_path, image_shape = image_shape)
     a.set_gan()
+    print(len(a))
     for i in a:
         img, gt = i
         break

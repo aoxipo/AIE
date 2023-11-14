@@ -1,5 +1,5 @@
 import sys
-sys.path.append('F:/AIE-main/')
+sys.path.append('C:/Users/csz/Desktop/cs/AIE')
 from dataloader import DataLoad
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
@@ -142,7 +142,7 @@ class Train():
         running_loss = 0
         test_index = 0
         acc = []
-        acc_dict = []
+        acc_dict = {}
         for i in DATA_KEY:
             acc_dict[i] = []
 
@@ -169,11 +169,13 @@ class Train():
                 if need_score:
                     
                     acc_1 = torch.sum(torch.argmax(outputs[0], 1) == torch.argmax(y_gt[0], 1))/len(y_gt[0])
-                    acc_dict[DATA_KEY[0]].append( acc_1 )
+                    acc_dict[DATA_KEY[0]].append( acc_1.cpu().item() )
                     acc_list = [acc_1]
                     for i in range(1,14):
                         acc_list.append( torch.sum(torch.argmax(outputs[i], 1) == torch.argmax(y_gt[i], 1))/len(y_gt[i]))
-                        acc_dict[DATA_KEY[i]].append( torch.sum(torch.argmax(outputs[i], 1) == torch.argmax(y_gt[i], 1))/len(y_gt[i]) )
+                        acc_dict[DATA_KEY[i]].append((torch.sum(torch.argmax(outputs[i], 1) == torch.argmax(y_gt[i], 1)) / len(y_gt[i])).cpu().item())
+
+
                     acc.append( acc_list )
 
 
@@ -290,15 +292,15 @@ if __name__ == "__main__":
         file_mode= "w+",#"a+",
         should_flush=True
     )
-    batch_size = 12
+    batch_size = 256
     image_size = 256 #224 # 7
-    root_path = r"D:\dataset\eye\Train" 
+    root_path = r"C:\Users\csz\Desktop\cs\Train"
     All_dataloader = DataLoad(
         root_path, 
         image_shape =  (image_size, image_size), #(240, 480), # (320, 640), #(256,256), #(320, 640),
-        data_aug = 2,
+        data_aug = 1,
         )
-    
+
     train_size = int(len(All_dataloader) * 0.8)
     print("size :", train_size)
  
@@ -311,6 +313,7 @@ if __name__ == "__main__":
         shuffle = True,
         drop_last = True,
     )
+    print("############################", len(train_loader), ":train_dataset:", len(train_dataset))
     validate_loader = DataLoader(
         dataset = validate_dataset,
         batch_size = batch_size,
@@ -321,6 +324,10 @@ if __name__ == "__main__":
         0: "Unet",
         1: "DUAL",
     }
+
+    for i in train_loader:
+        print("get data tarin loader #################################", i[0].shape)
+        break
 
     trainer = Train( 
         1, image_size,
