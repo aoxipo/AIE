@@ -298,6 +298,59 @@ class DataLoad(Dataset):
             print(index)
             print(traceback.print_exc())
 
+def getFileList(dir_path, file_list, ext = None):
+    """
+    递归遍历dir path下所有 获取文件夹及其子文件夹中文件 带ext的文件列表
+    param dir_path: 文件夹根目录
+    param file_list: 文件list地址
+    param ext: 扩展名
+    返回： 文件路径列表
+    """
+    newDir = dir_path
+    if os.path.isfile(dir_path):
+        if ext is None:
+            file_list.append(dir_path)
+        else:
+            if ext in dir_path[-3:]:
+                file_list.append(dir_path)
+    
+    elif os.path.isdir(dir_path):
+        for s in os.listdir(dir_path):
+            newDir=os.path.join(dir_path,s)
+            getFileList(newDir, file_list, ext)
+ 
+    return file_list
+
+class DataloadTest(Dataset):
+    def __init__(self, file_path = "") -> None:
+        super().__init__()
+       
+        self.file_path_len = len(file_path)
+        file_list = []
+        file_list = getFileList(file_path, file_list, "jpg")
+        self.load_data(file_list)
+
+
+    def load_data(self, file_list):
+        photo_set = []
+        for file_path in file_list:
+            file_obj = file_path[self.file_path_len:].replace("\\",'/').split("/")
+            folder = file_obj[0]
+            name = file_obj[1]
+            photo_set.append(
+                {
+                    "path":file_path,
+                    "folder":folder,
+                    "name":name,
+                }
+            )
+        self.total = len(photo_set)
+        self.photo_set = photo_set
+
+    def __len__(self):
+        return self.total
+
+
 
 if __name__ == '__main__':
     root_path = r"C:\Users\csz\Desktop\cs\Train"

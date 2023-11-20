@@ -1,0 +1,52 @@
+pvt Summary: 319 layers, 24849856 parameters, 24.849856 M, 24849856 gradients
+C:\Users\DentaLink\.conda\envs\tooth\lib\site-packages\torchvision\models\_utils.py:208: UserWarning: The parameter 'pretrained' is deprecated since 0.13 and may be removed in the future, please use 'weights' instead.
+  warnings.warn(
+C:\Users\DentaLink\.conda\envs\tooth\lib\site-packages\torchvision\models\_utils.py:223: UserWarning: Arguments other than a weight enum or `None` for 'weights' are deprecated since 0.13 and may be removed in the future. The current behavior is equivalent to passing `weights=ResNet34_Weights.IMAGENET1K_V1`. You can also use `weights=ResNet34_Weights.DEFAULT` to get the most up-to-date weights.
+  warnings.warn(msg)
+ResNet Summary: 116 layers, 21797672 parameters, 21.797672 M, 21797672 gradients
+inc [ 128  256  576 1024]
+inc [ 128  256  576 1024]
+build DUAL model
+
+D:\project\AIE\dataloader.py:209: FutureWarning: Series.__getitem__ treating keys as positions is deprecated. In a future version, integer keys will always be treated as labels (consistent with DataFrame behavior). To access a value by position, use `ser.iloc[pos]`
+  file_folder = row[-1]
+D:\dataset\eye\Train/Train/454_L/ not exists!
+D:\dataset\eye\Train/Train/454_R/ not exists!
+D:\dataset\eye\Train/Train/611_L/ not exists!
+D:\dataset\eye\Train/Train/729_L/ not exists!
+D:\dataset\eye\Train/Train/1412_L/ not exists!
+D:\dataset\eye\Train/Train/1417_L/ not exists!
+D:\dataset\eye\Train/Train/1425_R/ not exists!
+D:\dataset\eye\Train/Train/1426_R/ not exists!
+D:\dataset\eye\Train/Train/1427_L/ not exists!
+D:\dataset\eye\Train/Train/1427_R/ not exists!
+D:\dataset\eye\Train/Train/1429_L/ not exists!
+D:\dataset\eye\Train/Train/1429_R/ not exists!
+D:\dataset\eye\Train/Train/1430_L/ not exists!
+D:\dataset\eye\Train/Train/1430_R/ not exists!
+D:\dataset\eye\Train/Train/1431_R/ not exists!
+D:\dataset\eye\Train/Train/1432_R/ not exists!
+D:\dataset\eye\Train/Train/1434_L/ not exists!
+D:\dataset\eye\Train/Train/1434_R/ not exists!
+D:\dataset\eye\Train/Train/1435_R/ not exists!
+D:\dataset\eye\Train/Train/1436_L/ not exists!
+D:\dataset\eye\Train/Train/1439_L/ not exists!
+D:\dataset\eye\Train/Train/1441_R/ not exists!
+D:\dataset\eye\Train/Train/1442_L/ not exists!
+D:\dataset\eye\Train/Train/1442_R/ not exists!
+D:\dataset\eye\Train/Train/1443_R/ not exists!
+D:\dataset\eye\Train/Train/1444_R/ not exists!
+D:\dataset\eye\Train/Train/1445_L/ not exists!
+D:\dataset\eye\Train/Train/1447_L/ not exists!
+D:\dataset\eye\Train/Train/1447_R/ not exists!
+D:\dataset\eye\Train/Train/1452_R/ not exists!
+total load data: 28210
+total load : 45
+C:\Users\DentaLink\.conda\envs\tooth\lib\site-packages\torch\nn\modules\module.py:1518: UserWarning: Implicit dimension choice for softmax has been deprecated. Change the call to include dim=X as an argument.
+  return self._call_impl(*args, **kwargs)
+process: 1/45
+process: 9/45
+process: 23/45
+process: 25/45
+process: 40/45
+overed
