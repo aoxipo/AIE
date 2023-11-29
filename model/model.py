@@ -77,7 +77,8 @@ class Fusion(nn.Module):
         feature = x @ q
         out = self.out(feature)
         return out
-    
+#  多目标 对齐 特征 时序 特征长短不一 优化
+#　基于双编码不定长时序眼球诊断优化算法
 import numpy as np
 class Neck(nn.Module): 
     def __init__(self, pvt_decode, resnet_decode, num_conv_layers = [ 8, 6]):
@@ -190,9 +191,56 @@ class Head(nn.Module):
             Pattern_res 
         ]
 
+class AFC(nn.Module):            
+    def __init__(self, features_list, out_features, r = 2, L=32):
+        """ Constructor
+        Args:
+            features: input channel dimensionality.
+            r: the radio for compute d, the length of z.                 2      
+            L: the minimum dim of the vector z in paper, default 32
+        """
+        super(AFC, self).__init__()
+        features = out_features
+        d = max(int(features/r), L)
+        self.M = len(features_list)
+        self.features = features
+        self.convs = nn.ModuleList()
+        self.gap = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Linear(features, d)
+        self.fcs = nn.ModuleList()
+        for i in range(self.M):
+            self.fcs.append(
+                nn.Linear(d, features)
+            )
+        self.softmax = nn.Softmax(dim=1)
+        
+    def forward(self, x):
+        total = len(x) 
+        for i in range(total):
+            fea = x[i].unsqueeze_(dim = 1)
+            if i == 0:
+                feas = fea
+            else:
+                feas = torch.cat([feas, fea], dim=1)
+        
+        fea_U = torch.sum(feas, dim=1)
+        fea_s = self.gap(fea_U).squeeze(dim=-1).squeeze(dim=-1)
+        fea_z = self.fc(fea_s)
+        for i, fc in enumerate(self.fcs):
+            vector = fc(fea_z).unsqueeze_(dim=1)
+            if i == 0:
+                attention_vectors = vector
+            else:
+                attention_vectors = torch.cat([attention_vectors, vector], dim=1)
+           
+        attention_vectors = self.softmax(attention_vectors)
+        attention_vectors = attention_vectors.unsqueeze(-1).unsqueeze(-1)
+        fea_v = feas.sum(dim=1) * attention_vectors.sum(dim=1).squeeze(1)
+        return fea_v
+
 from .pvtv2 import pvt_v2_b2
 from torchvision.models import resnet34 as resnet
-class DUAL(BaseLine):
+class DUAL(BaseLine): #pipline
     # 类别数量
     Impression = 23 # 0
     HyperF_Type = 5 # 1
@@ -233,8 +281,20 @@ class DUAL(BaseLine):
         n_g = sum(x.numel() for x in self.resnet.parameters() if x.requires_grad)  # number gradients
         print(f"ResNet Summary: {len(list(self.resnet.modules()))} layers, {n_p} parameters, {n_p/1e6} M, {n_g} gradients")
 #         self.neck = Neck( pvt_feature = [64, 128, 320, 512], resnet_feature = [64, 128, 256, 512], num_conv_layers = neck_num)
-        self.neck = Neck( [64, 128, 320, 512],  [64, 128, 256, 512], num_conv_layers = neck_num)
+        pvt_feature = [64, 128, 320, 512]
+        resnet_feature = [64, 128, 256, 512]
+        self.neck = Neck( pvt_feature, resnet_feature, num_conv_layers = neck_num)
         self.head = Head(middle_channel=[ 512 for i in range(14) ])
+        self.afc = nn.ModuleList()
+        self.afc1 = nn.ModuleList()
+        for i in range(4):
+            self.afc.append( 
+                AFC([ pvt_feature[i] for ii in range(4)], pvt_feature[i])
+            )
+            self.afc1.append( 
+                AFC([ resnet_feature[i] for ii in range(4)], resnet_feature[i])
+            )
+        
     
     @torch.no_grad()
     def pvt_backbone(self, x):
@@ -244,7 +304,6 @@ class DUAL(BaseLine):
 
         pvt = self.backbone(pvt_x)
         # pvt_decode: x1:torch.Size([2, 64, 56, 56]), c2:torch.Size([2, 128, 28, 28]), c3:torch.Size([2, 320, 14, 14]), c4:torch.Size([2, 512, 7, 7])
-        
         return pvt
     
     @torch.no_grad()
@@ -264,10 +323,27 @@ class DUAL(BaseLine):
         #res: x1:torch.Size([2, 64, 56, 56]), c2:torch.Size([2, 128, 28, 28]), c3:torch.Size([2, 256, 14, 14]), c4:torch.Size([2, 512, 7, 7])
         #print(f"res:x:{x.shape}, x1:{x1.shape}, c2:{x2.shape}, c3:{x3.shape}, c4:{x4.shape}")
         # print(f"pvt_decode:x:{x.shape}, x1:{pvt_decode[0].shape}, c2:{pvt_decode[1].shape}, c3:{pvt_decode[2].shape}, c4:{pvt_decode[3].shape}")
-        return x1,x2, x3,x4
-    def forward(self, x):
-        pvt_decode = self.pvt_backbone(x)     
-        res_decode = self.resnet_backbone(x)
+        return x1, x2, x3,x4
+    def forward(self, x_list):
+        pvt_decode_list = [[],[],[],[]]
+        res_decode_list = [[],[],[],[]]
+        
+        for x in x_list:
+            pvt_decode = self.pvt_backbone(x)     
+            res_decode = self.resnet_backbone(x)
+
+            for i in range(4):
+                pvt_decode_list[i].append( pvt_decode[i] )
+                res_decode_list[i].append( res_decode[i] )
+
+        pvt_decode = []
+        res_decode = []
+        
+        for i in range(4):
+            pvt_decode.append(self.afc[i](pvt_decode_list[i]))
+            res_decode.append(self.afc1[i](res_decode_list[i]))
+        
         feature_neck = self.neck( pvt_decode, res_decode)
+        
         classifier = self.head(feature_neck)
         return classifier

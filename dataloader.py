@@ -210,13 +210,11 @@ class DataLoad(Dataset):
             file_path = img_root_path + file_folder + "/"
             if os.path.exists(file_path):
                 file_name_list = os.listdir(file_path)
-                for file_name in file_name_list:
-                    
-                    img_obj = {
-                        "image" : file_path  + file_name,
-                        "gt" : gt_index,
-                    }
-                    photo_set.append(img_obj)
+                img_obj = {
+                     "image": [ file_path  + file_name for file_name in file_name_list ],
+                     "gt" : gt_index,
+                }
+                photo_set.append(img_obj)
             else:
                 print(file_path, "not exists!"  )
 ##
@@ -273,22 +271,23 @@ class DataLoad(Dataset):
             raise StopIteration
         try:
             re_index = index
-            direct = 0
-            image_src_path, image_gt = self.photo_set_one_hot[re_index]['image'], self.photo_set_one_hot[re_index]['gt_oh']
-            if "direct" in self.photo_set_one_hot[re_index]:
-                direct = self.photo_set_one_hot[re_index]['direct']
-            # print( image_src_path, os.path.exists(image_src_path) )
-            img = self.read_image(image_src_path)
-            # print( image_src_path, img.shape, direct)
-            if direct:
+            image_gt = self.photo_set_one_hot[re_index]['gt_oh']
+            image_src_path_list = self.photo_set_one_hot[re_index]['image']
+            img_list = []
+            for image_src_path in image_src_path_list:
+                
+                img = self.read_image(image_src_path)
+             
                 img = img[:384,384:]
-            else:
+                img = self.datagan(img)
+                img_list.append(img)
+
                 img = img[:384,:384]
-            
-            img = self.datagan(img)
-            # print("data gan:", img.shape)
+                img = self.datagan(img)
+                img_list.append(img)
+
             image_gt = [ torch.from_numpy(gt) for gt in image_gt ]
-            # image_gt = self.datagan_gt(image_gt)
+            
 
             return img, image_gt
         except Exception as e:
