@@ -210,6 +210,10 @@ class DataLoad(Dataset):
             file_path = img_root_path + file_folder + "/"
             if os.path.exists(file_path):
                 file_name_list = os.listdir(file_path)
+                if len(file_name_list) == 0:
+                    print(file_path, "dont have image!!!"  )
+                    # os.remove(file_path)
+                    continue
                 img_obj = {
                      "image": [ file_path  + file_name for file_name in file_name_list ],
                      "gt" : gt_index,
@@ -276,20 +280,28 @@ class DataLoad(Dataset):
             img_list = []
             for image_src_path in image_src_path_list:
                 
-                img = self.read_image(image_src_path)
-             
-                img = img[:384,384:]
-                img = self.datagan(img)
-                img_list.append(img)
+                imgOrigin = self.read_image(image_src_path)
+                w,h,c = imgOrigin.shape 
+                if w<384:
+                    imgOrigin = cv2.resize( imgOrigin, (384, 384) )
+                    w,h,c = imgOrigin.shape
 
-                img = img[:384,:384]
+                img = imgOrigin[:384,:384,:]
+                assert img.shape == (384,384,3), f"{image_src_path}, {imgOrigin.shape}"
                 img = self.datagan(img)
+          
                 img_list.append(img)
+                # print(image_src_path, img.shape)
+                if h == 768:
+                    img = imgOrigin[:384,384:,:]
+                    assert img.shape == (384,384,3), f"h, {image_src_path}, {img.shape}"
+                    img = self.datagan(img)
+                    
+                    img_list.append(img)
 
             image_gt = [ torch.from_numpy(gt) for gt in image_gt ]
-            
 
-            return img, image_gt
+            return img_list, image_gt
         except Exception as e:
             print("发现异常")
             print(e.__class__.__name__)
@@ -319,6 +331,44 @@ def getFileList(dir_path, file_list, ext = None):
             getFileList(newDir, file_list, ext)
  
     return file_list
+
+class DiffDataLoader():
+    def __init__(self, dataset, batch_size, drop_last = True, shuffle = True) -> None:
+        self.dataloader = dataset
+        total = len(self.dataloader)
+        self.index = [ i for i in range(total)]
+        if shuffle:
+            np.random.shuffle(self.index)
+        self.len = total//batch_size
+        self.batch_size = batch_size
+        print("totalbatch:", self.len)
+    def __len__(self):
+        return self.len
+    
+    def __iter__(self):
+        for index in range(self.len):
+            yield self.__getitem__(index)
+    
+    def __getitem__(self, index):
+        if index > self.len:
+            raise StopIteration
+        
+        batch_index = self.index[ index*self.batch_size: (index+1)*self.batch_size]
+        img_list = []
+        gt_list = [[] for i in range(14)]
+        for ind in batch_index:
+            img, gt = self.dataloader[ind]
+            # print(len(img), img[0].shape)
+            img_list.append(img)
+            for j in range(len(gt)):
+                gt_list[j].append(torch.Tensor(gt[j]))
+
+        for j in range(len(gt_list)):
+            gt_list[j] = torch.stack(gt_list[j], 0)
+            # print(gt_list[j].shape)
+
+        return img_list, gt_list
+
 
 class DataloadTest(Dataset):
     def __init__(self, file_path = "") -> None:

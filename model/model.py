@@ -191,6 +191,7 @@ class Head(nn.Module):
             Pattern_res 
         ]
 
+
 class AFC(nn.Module):            
     def __init__(self, features_list, out_features, r = 2, L=32):
         """ Constructor
@@ -212,20 +213,27 @@ class AFC(nn.Module):
             self.fcs.append(
                 nn.Linear(d, features)
             )
-        self.softmax = nn.Softmax(dim=1)
+        self.softmax = nn.Softmax(dim=1) 
         
+    def normal(self, x):
+        return (x - x.min())/(x.max() - x.min())
+    
     def forward(self, x):
         total = len(x) 
         for i in range(total):
-            fea = x[i].unsqueeze_(dim = 1)
+            fea = x[i].unsqueeze_(dim = 0).unsqueeze_(dim = 1)
+            # print(fea.shape)
             if i == 0:
                 feas = fea
             else:
                 feas = torch.cat([feas, fea], dim=1)
-        
-        fea_U = torch.sum(feas, dim=1)
+        # print(feas.shape)
+        fea_U = torch.sum(feas, dim=1)#.unsqueeze(0)
+        # print("feau:", fea_U.shape)
         fea_s = self.gap(fea_U).squeeze(dim=-1).squeeze(dim=-1)
+        # print(fea_s.shape, self.fc)
         fea_z = self.fc(fea_s)
+        # print( fea_z.shape )
         for i, fc in enumerate(self.fcs):
             vector = fc(fea_z).unsqueeze_(dim=1)
             if i == 0:
@@ -235,8 +243,9 @@ class AFC(nn.Module):
            
         attention_vectors = self.softmax(attention_vectors)
         attention_vectors = attention_vectors.unsqueeze(-1).unsqueeze(-1)
-        fea_v = feas.sum(dim=1) * attention_vectors.sum(dim=1).squeeze(1)
+        fea_v = self.normal(feas.sum(dim=1)) * self.normal(attention_vectors.sum(dim=1).squeeze(1))
         return fea_v
+    
 
 from .pvtv2 import pvt_v2_b2
 from torchvision.models import resnet34 as resnet
@@ -298,9 +307,10 @@ class DUAL(BaseLine): #pipline
     
     @torch.no_grad()
     def pvt_backbone(self, x):
-        pvt_x = x.clone().detach()
-        if x.shape[1] == 1:
-            pvt_x = torch.cat([pvt_x,pvt_x,pvt_x], 1)
+        pvt_x = x # .clone().detach()
+        pvt_x = torch.stack(pvt_x, 0)
+        # if x.shape[1] == 1:
+        #     pvt_x = torch.cat([pvt_x,pvt_x,pvt_x], 1)
 
         pvt = self.backbone(pvt_x)
         # pvt_decode: x1:torch.Size([2, 64, 56, 56]), c2:torch.Size([2, 128, 28, 28]), c3:torch.Size([2, 320, 14, 14]), c4:torch.Size([2, 512, 7, 7])
@@ -310,6 +320,7 @@ class DUAL(BaseLine): #pipline
     def resnet_backbone(self, x):
         # if x.shape[1] == 1:
         #     x = torch.cat([x,x,x], 1)
+        x = torch.stack(x, 0)
         x   = self.resnet.conv1(x)
         x   = self.resnet.bn1(x)
         x   = self.resnet.relu(x)
@@ -327,22 +338,33 @@ class DUAL(BaseLine): #pipline
     def forward(self, x_list):
         pvt_decode_list = [[],[],[],[]]
         res_decode_list = [[],[],[],[]]
-        
+        # print("encode:", len(x_list))
         for x in x_list:
+            # x = x.unsqueeze(0)
             pvt_decode = self.pvt_backbone(x)     
             res_decode = self.resnet_backbone(x)
-
             for i in range(4):
+                # print( pvt_decode[i].shape, res_decode[i].shape )
                 pvt_decode_list[i].append( pvt_decode[i] )
                 res_decode_list[i].append( res_decode[i] )
 
-        pvt_decode = []
-        res_decode = []
-        
+        pvt_decode = [[],[],[],[]]
+        res_decode = [[],[],[],[]]
+
+        for i in range(len(x_list)):
+            # print(len(pvt_decode_list[0]))
+            # print(pvt_decode_list[0][i].shape)
+            for j in range(4):
+                pvt_feature = self.afc[j](pvt_decode_list[j][i])
+                res_feature = self.afc1[j](res_decode_list[j][i])
+                pvt_decode[j].append(pvt_feature)
+                res_decode[j].append(res_feature)
+
         for i in range(4):
-            pvt_decode.append(self.afc[i](pvt_decode_list[i]))
-            res_decode.append(self.afc1[i](res_decode_list[i]))
-        
+            pvt_decode[i] = torch.cat(pvt_decode[i] , 0)
+            res_decode[i] = torch.cat(res_decode[i] , 0)
+            # print(pvt_decode[i].shape, res_decode[i].shape)
+
         feature_neck = self.neck( pvt_decode, res_decode)
         
         classifier = self.head(feature_neck)

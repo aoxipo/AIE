@@ -1,7 +1,8 @@
 import sys
 sys.path.append('C:/Users/csz/Desktop/cs/AIE')
 from dataloader import DataLoad
-from torch.utils.data import DataLoader
+from dataloader import DiffDataLoader as DataLoader
+# from torch.utils.data import DataLoader
 from torch.autograd import Variable
 from torchsummary import summary
 import os
@@ -203,15 +204,19 @@ class Train():
             X_train, y_train = data
             if self.debug:
                 self.debug -= 1
-                print("X_train :{}".format(X_train.shape,))
-                print("Y:", [ i.shape for i in y_train ])
+                # print("X_train :{},{} ".format(X_train[0].shape,len(X_train)))
+                print("Y:", [ i[0].shape for i in y_train ])
             y_gt = y_train
      
-            X_train, y_gt = Variable(X_train).float(), y_gt
+            X_train, y_gt = X_train, y_gt
             if (use_gpu):
-                X_train = X_train.to(device)
+                for i in range(len(X_train)): 
+                    for j in range(len(X_train[i])):
+                        # print((X_train[i][j])
+                        X_train[i][j] = Variable(X_train[i][j]).float().to(device)
+                print(len(y_gt), len(y_gt[0]))
                 for i in range(len(y_gt)):
-                    y_gt[i] = y_gt[i].to(device)
+                    y_gt[i]= y_gt[i].to(device)
 
             # print("训练中 train {}".format(X_train.shape))
             self.optimizer.zero_grad()
@@ -292,9 +297,9 @@ if __name__ == "__main__":
         file_mode= "w+",#"a+",
         should_flush=True
     )
-    batch_size = 256
+    batch_size = 12
     image_size = 256 #224 # 7
-    root_path = r"C:\Users\csz\Desktop\cs\Train"
+    root_path = r"D:\dataset\eye\Train" #r"C:\Users\csz\Desktop\cs\Train"
     All_dataloader = DataLoad(
         root_path, 
         image_shape =  (image_size, image_size), #(240, 480), # (320, 640), #(256,256), #(320, 640),
@@ -325,9 +330,9 @@ if __name__ == "__main__":
         1: "DUAL",
     }
 
-    for i in train_loader:
-        print("get data tarin loader #################################", i[0].shape)
-        break
+    # for i in train_loader:
+    #     print("get data tarin loader #################################", i[0].shape)
+    #     break
 
     trainer = Train( 
         1, image_size,
@@ -340,6 +345,6 @@ if __name__ == "__main__":
     print("using ",device)
     # trainer.load_parameter( "./save_best/GTU_pvt/best.pkl" )
 
-    trainer.train_and_test(100, train_loader, validate_loader)
+    trainer.train_and_test(101, train_loader, validate_loader)
 
 
