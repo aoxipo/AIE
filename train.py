@@ -151,9 +151,12 @@ class Train():
             for data in data_loader_test:
 
                 X_test, y_test = data
-                X_test, y_gt = Variable(X_test).float(), y_test
+                X_test, y_gt = X_test, y_test
                 if (use_gpu):
-                    X_test = X_test.to(device)
+                    for i in range(len(X_test)): 
+                        for j in range(len(X_test[i])):
+                            # print((X_train[i][j])
+                            X_test[i][j] = Variable(X_test[i][j]).float().to(device)
                     for i in range(len(y_gt)):
                         y_gt[i] = y_gt[i].to(device)
                 
