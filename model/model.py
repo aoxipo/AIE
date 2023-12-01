@@ -216,7 +216,7 @@ class AFC(nn.Module):
         self.softmax = nn.Softmax(dim=1) 
         
     def normal(self, x):
-        return (x - x.min())/(x.max() - x.min())
+        return (x - x.min() + 1e-8)/(x.max() - x.min() + 1e-8)
     
     def forward(self, x):
         total = len(x) 
@@ -229,9 +229,10 @@ class AFC(nn.Module):
                 feas = torch.cat([feas, fea], dim=1)
         # print(feas.shape)
         fea_U = torch.sum(feas, dim=1)#.unsqueeze(0)
+        fea_U = self.normal(fea_U)
         # print("feau:", fea_U.shape)
         fea_s = self.gap(fea_U).squeeze(dim=-1).squeeze(dim=-1)
-        # print(fea_s.shape, self.fc)
+        # print(fea_s.shape, self.fc)   
         fea_z = self.fc(fea_s)
         # print( fea_z.shape )
         for i, fc in enumerate(self.fcs):
@@ -276,6 +277,7 @@ class DUAL(BaseLine): #pipline
         path = './model/pretrained_pth/pvt_v2_b2.pth' # 找我要
         self.backbone = pvt_v2_b2()  # [64, 128, 320, 512]
         save_model = torch.load(path)
+        print("load parameter:", path)
         model_dict = self.backbone.state_dict()
         state_dict = {k: v for k, v in save_model.items() if k in model_dict.keys()}
         model_dict.update(state_dict)
@@ -335,7 +337,9 @@ class DUAL(BaseLine): #pipline
         #print(f"res:x:{x.shape}, x1:{x1.shape}, c2:{x2.shape}, c3:{x3.shape}, c4:{x4.shape}")
         # print(f"pvt_decode:x:{x.shape}, x1:{pvt_decode[0].shape}, c2:{pvt_decode[1].shape}, c3:{pvt_decode[2].shape}, c4:{pvt_decode[3].shape}")
         return x1, x2, x3,x4
-    def forward(self, x_list):
+    
+
+    def ext_feature(self, x_list):
         pvt_decode_list = [[],[],[],[]]
         res_decode_list = [[],[],[],[]]
         # print("encode:", len(x_list))
@@ -352,8 +356,7 @@ class DUAL(BaseLine): #pipline
         res_decode = [[],[],[],[]]
 
         for i in range(len(x_list)):
-            # print(len(pvt_decode_list[0]))
-            # print(pvt_decode_list[0][i].shape)
+
             for j in range(4):
                 pvt_feature = self.afc[j](pvt_decode_list[j][i])
                 res_feature = self.afc1[j](res_decode_list[j][i])
@@ -363,8 +366,11 @@ class DUAL(BaseLine): #pipline
         for i in range(4):
             pvt_decode[i] = torch.cat(pvt_decode[i] , 0)
             res_decode[i] = torch.cat(res_decode[i] , 0)
-            # print(pvt_decode[i].shape, res_decode[i].shape)
+        return pvt_decode, res_decode
 
+    def forward(self, x_list):
+        pvt_decode, res_decode = self.ext_feature(x_list)
+  
         feature_neck = self.neck( pvt_decode, res_decode)
         
         classifier = self.head(feature_neck)

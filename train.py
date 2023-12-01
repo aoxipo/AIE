@@ -214,7 +214,6 @@ class Train():
                     for j in range(len(X_train[i])):
                         # print((X_train[i][j])
                         X_train[i][j] = Variable(X_train[i][j]).float().to(device)
-                print(len(y_gt), len(y_gt[0]))
                 for i in range(len(y_gt)):
                     y_gt[i]= y_gt[i].to(device)
 
@@ -297,7 +296,7 @@ if __name__ == "__main__":
         file_mode= "w+",#"a+",
         should_flush=True
     )
-    batch_size = 12
+    batch_size = 32
     image_size = 256 #224 # 7
     root_path = r"D:\dataset\eye\Train" #r"C:\Users\csz\Desktop\cs\Train"
     All_dataloader = DataLoad(

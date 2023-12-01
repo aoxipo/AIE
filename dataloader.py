@@ -75,7 +75,7 @@ class DataLoad(Dataset):
         csv_path = root_path + "/Train.csv"
         self.image_shape = image_shape
         self.data_source = pd.read_csv(csv_path)
-        print("")
+        # print("")
         data_key = [ "Impression", "HyperF_Type", "HyperF_Area(DA)", "HyperF_Fovea", "HyperF_ExtraFovea", "HyperF_Y",
           "HypoF_Type" ,"HypoF_Area(DA)","HypoF_Fovea", "HypoF_ExtraFovea"
         ,"HypoF_Y","CNV","Vascular abnormality (DR)","Pattern"]
