@@ -203,7 +203,7 @@ class AFC(nn.Module):
         super(AFC, self).__init__()
         features = out_features
         d = max(int(features/r), L)
-        self.M = len(features_list)
+        self.M = 1# len(features_list)
         self.features = features
         self.convs = nn.ModuleList()
         self.gap = nn.AdaptiveAvgPool2d(1)
@@ -244,7 +244,8 @@ class AFC(nn.Module):
            
         attention_vectors = self.softmax(attention_vectors)
         attention_vectors = attention_vectors.unsqueeze(-1).unsqueeze(-1)
-        fea_v = self.normal(feas.sum(dim=1)) * self.normal(attention_vectors.sum(dim=1).squeeze(1))
+        # print(attention_vectors.shape)
+        fea_v = fea_U * attention_vectors.squeeze(1)
         return fea_v
     
 
@@ -359,6 +360,8 @@ class DUAL(BaseLine): #pipline
 
             for j in range(4):
                 pvt_feature = self.afc[j](pvt_decode_list[j][i])
+                # print(f"pvt:{i} {pvt_decode_list[j][i].min()} {pvt_decode_list[j][i].max()}")
+                # print(f"res:{i} {res_decode_list[j][i].min()} {res_decode_list[j][i].max()}")
                 res_feature = self.afc1[j](res_decode_list[j][i])
                 pvt_decode[j].append(pvt_feature)
                 res_decode[j].append(res_feature)
